@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://peem2peem2suwan-maker.github.io/online-admission-system-/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
