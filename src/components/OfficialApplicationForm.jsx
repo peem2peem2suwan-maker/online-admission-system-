@@ -1,11 +1,12 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import OfficialEmblem from "./OfficialEmblem";
 import { toThaiNumerals } from "../utils/validation";
-import { Printer, Download, X, CheckSquare, Square } from "lucide-react";
+import { Printer, Download, X, Loader2, Info } from "lucide-react";
 import html2pdf from "html2pdf.js";
 
 export default function OfficialApplicationForm({ applicant, onClose }) {
   const printRef = useRef(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   if (!applicant) return null;
 
@@ -13,16 +14,48 @@ export default function OfficialApplicationForm({ applicant, onClose }) {
     window.print();
   };
 
-  const handleDownloadPDF = () => {
-    const element = printRef.current;
-    const opt = {
-      margin: [10, 15, 10, 15],
-      filename: `ใบสมัคร_${applicant.fullName || (applicant.firstName + "_" + applicant.lastName)}_${applicant.code || "โควตา"}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    };
-    html2pdf().set(opt).from(element).save();
+  const handleDownloadPDF = async () => {
+    if (isGeneratingPDF) return;
+    setIsGeneratingPDF(true);
+
+    try {
+      const element = printRef.current;
+      if (!element) {
+        setIsGeneratingPDF(false);
+        return;
+      }
+
+      const fileName = `ใบสมัคร_${applicant.fullName || (applicant.firstName + "_" + applicant.lastName)}_${applicant.code || "โควตา"}.pdf`;
+
+      const opt = {
+        margin: [8, 12, 8, 12],
+        filename: fileName,
+        image: { type: "jpeg", quality: 0.96 },
+        html2canvas: {
+          scale: 1.8,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          letterRendering: true,
+        },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      };
+
+      // Set timeout race so browser NEVER hangs
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout generating PDF")), 6000)
+      );
+
+      const generatePromise = html2pdf().set(opt).from(element).save();
+
+      await Promise.race([generatePromise, timeoutPromise]);
+    } catch (error) {
+      console.warn("Direct PDF export encountered an issue, launching print dialog fallback:", error);
+      // Fallback seamlessly to native browser print dialog (Save as PDF)
+      window.print();
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   // Level checkboxes check logic
@@ -52,9 +85,9 @@ export default function OfficialApplicationForm({ applicant, onClose }) {
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[96vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         
         {/* Modal Toolbar (hidden when printing) */}
-        <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-800">
+        <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
             <div>
               <h3 className="font-semibold text-sm sm:text-base">
                 ตัวอย่างรายงานใบสมัคร (แบบฟอร์มทางการ)
@@ -64,31 +97,55 @@ export default function OfficialApplicationForm({ applicant, onClose }) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Print Button (Native & Fast) */}
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="พิมพ์เอกสารออกเครื่องพิมพ์หรือบันทึกเป็น PDF ของบราวเซอร์"
+              disabled={isGeneratingPDF}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="สั่งพิมพ์หรือบันทึกเป็น PDF (รวดเร็ว คมชัด ไม่ค้าง)"
             >
               <Printer className="w-4 h-4" />
-              <span>สั่งพิมพ์ (Print)</span>
+              <span>สั่งพิมพ์ / บันทึก PDF</span>
             </button>
+
+            {/* Direct Download PDF Button */}
             <button
               onClick={handleDownloadPDF}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="สร้างและดาวน์โหลดไฟล์ PDF โดยตรง"
+              disabled={isGeneratingPDF}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="ดาวน์โหลดไฟล์ PDF โดยตรง"
             >
-              <Download className="w-4 h-4" />
-              <span>ดาวน์โหลด PDF</span>
+              {isGeneratingPDF ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>กำลังโหลด PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>ดาวน์โหลด PDF</span>
+                </>
+              )}
             </button>
+
             <button
               onClick={onClose}
+              disabled={isGeneratingPDF}
               className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
               title="ปิดหน้าต่าง"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
+
+        {/* Tip Banner */}
+        <div className="no-print bg-blue-50 border-b border-blue-200 px-6 py-2 text-xs text-blue-900 flex items-center gap-2">
+          <Info className="w-4 h-4 text-blue-600 shrink-0" />
+          <span>
+            <strong>คำแนะนำ:</strong> สามารถกด <strong>"สั่งพิมพ์ / บันทึก PDF"</strong> แล้วเลือกปลายทางเป็น <em>"Save as PDF (บันทึกเป็น PDF)"</em> เพื่อรับไฟล์ความละเอียดสูงทันทีโดยไม่กระตุก
+          </span>
         </div>
 
         {/* Printable Paper Document (A4 Ratio) */}
@@ -109,8 +166,12 @@ export default function OfficialApplicationForm({ applicant, onClose }) {
                 {applicant.photo ? (
                   <img
                     src={applicant.photo}
+                    crossOrigin="anonymous"
                     alt="รูปถ่ายผู้สมัคร"
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
                   />
                 ) : (
                   <div className="text-[13px] leading-tight text-slate-700 flex flex-col items-center justify-center h-full">

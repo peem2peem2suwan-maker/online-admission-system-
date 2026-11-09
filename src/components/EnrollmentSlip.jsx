@@ -1,11 +1,12 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import OfficialEmblem from "./OfficialEmblem";
 import { toThaiNumerals, formatIDCard } from "../utils/validation";
-import { Printer, Download, X, Award, CheckCircle2 } from "lucide-react";
+import { Printer, Download, X, Award, CheckCircle2, Loader2, Info } from "lucide-react";
 import html2pdf from "html2pdf.js";
 
 export default function EnrollmentSlip({ applicant, onClose }) {
   const printRef = useRef(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   if (!applicant) return null;
 
@@ -13,16 +14,45 @@ export default function EnrollmentSlip({ applicant, onClose }) {
     window.print();
   };
 
-  const handleDownloadPDF = () => {
-    const element = printRef.current;
-    const opt = {
-      margin: [10, 15, 10, 15],
-      filename: `ใบมอบตัว_${applicant.studentId || applicant.code}_${applicant.firstName}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    };
-    html2pdf().set(opt).from(element).save();
+  const handleDownloadPDF = async () => {
+    if (isGeneratingPDF) return;
+    setIsGeneratingPDF(true);
+
+    try {
+      const element = printRef.current;
+      if (!element) {
+        setIsGeneratingPDF(false);
+        return;
+      }
+
+      const fileName = `ใบมอบตัว_${applicant.studentId || applicant.code}_${applicant.firstName}.pdf`;
+
+      const opt = {
+        margin: [10, 15, 10, 15],
+        filename: fileName,
+        image: { type: "jpeg", quality: 0.96 },
+        html2canvas: {
+          scale: 1.8,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+        },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      };
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout generating PDF")), 6000)
+      );
+
+      const generatePromise = html2pdf().set(opt).from(element).save();
+
+      await Promise.race([generatePromise, timeoutPromise]);
+    } catch (error) {
+      console.warn("Direct PDF export encountered an issue, launching print dialog fallback:", error);
+      window.print();
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const studentFullName = applicant.fullName || `${applicant.title || ""} ${applicant.firstName || ""} ${applicant.lastName || ""}`.trim();
@@ -32,9 +62,9 @@ export default function EnrollmentSlip({ applicant, onClose }) {
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[96vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         
         {/* Toolbar */}
-        <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-800">
+        <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-amber-400" />
+            <Award className="w-5 h-5 text-amber-400 shrink-0" />
             <div>
               <h3 className="font-semibold text-sm sm:text-base">
                 หลักฐานยืนยันสิทธิ์และใบมอบตัวเป็นนักเรียน/นักศึกษา
@@ -44,28 +74,48 @@ export default function EnrollmentSlip({ applicant, onClose }) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg cursor-pointer"
+              disabled={isGeneratingPDF}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-all shadow-xs active:scale-95"
             >
               <Printer className="w-4 h-4" />
-              <span>พิมพ์เอกสาร</span>
+              <span>สั่งพิมพ์ / บันทึก PDF</span>
             </button>
             <button
               onClick={handleDownloadPDF}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-medium rounded-lg cursor-pointer"
+              disabled={isGeneratingPDF}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-all shadow-xs active:scale-95"
             >
-              <Download className="w-4 h-4" />
-              <span>PDF</span>
+              {isGeneratingPDF ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>กำลังโหลด PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>PDF</span>
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
+              disabled={isGeneratingPDF}
               className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
+
+        {/* Tip Banner */}
+        <div className="no-print bg-blue-50 border-b border-blue-200 px-6 py-2 text-xs text-blue-900 flex items-center gap-2">
+          <Info className="w-4 h-4 text-blue-600 shrink-0" />
+          <span>
+            <strong>คำแนะนำ:</strong> สามารถกด <strong>"สั่งพิมพ์ / บันทึก PDF"</strong> แล้วเลือกเครื่องพิมพ์เป็น <em>"Save as PDF (บันทึกเป็น PDF)"</em> เพื่อได้เอกสารคมชัดสูงและไม่ค้าง
+          </span>
         </div>
 
         {/* Paper */}

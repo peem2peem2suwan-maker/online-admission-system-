@@ -10,22 +10,40 @@ export default function OfficialEmblem({ className = "w-16 h-16", showText = fal
         xmlns="http://www.w3.org/2000/svg"
       >
         {/* Outer Circular Ring */}
-        <circle cx="80" cy="80" r="76" stroke="#1e293b" strokeWidth="4" fill="#ffffff" />
-        <circle cx="80" cy="80" r="69" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="3 2" />
+        <circle cx="80" cy="80" r="76" stroke="#1e293b" strokeWidth="3.5" fill="#ffffff" />
+        <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="1.2" strokeDasharray="3 2" />
         <circle cx="80" cy="80" r="54" stroke="#1e293b" strokeWidth="2.5" />
         <circle cx="80" cy="80" r="50" stroke="#1e293b" strokeWidth="1" />
 
-        {/* Circular Text Path for สำนักงานคณะกรรมการการอาชีวศึกษา */}
-        <path
-          id="textRingPath"
-          d="M 17,80 A 63,63 0 1,1 143,80 A 63,63 0 1,1 17,80"
-          fill="none"
-        />
-        <text fontSize="9.5" fontWeight="bold" fill="#0f172a" letterSpacing="0.8">
-          <textPath href="#textRingPath" startOffset="50%" textAnchor="middle">
-            สำนักงานคณะกรรมการการอาชีวศึกษา • สอศ. •
-          </textPath>
+        {/* Top Text: สำนักงานคณะกรรมการการอาชีวศึกษา (Standard text for 100% canvas/html2pdf compatibility) */}
+        <text
+          x="80"
+          y="23"
+          textAnchor="middle"
+          fontSize="7.8"
+          fontWeight="bold"
+          fill="#0f172a"
+          letterSpacing="0.4"
+        >
+          สำนักงานคณะกรรมการการอาชีวศึกษา
         </text>
+
+        {/* Bottom Text: • สอศ. • */}
+        <text
+          x="80"
+          y="144"
+          textAnchor="middle"
+          fontSize="8"
+          fontWeight="bold"
+          fill="#0f172a"
+          letterSpacing="1"
+        >
+          • สอศ. •
+        </text>
+
+        {/* Decorative star dots on sides */}
+        <circle cx="21" cy="80" r="2.5" fill="#1e293b" />
+        <circle cx="139" cy="80" r="2.5" fill="#1e293b" />
 
         {/* Inner Emblem: Vocational Gear & Traditional Motif */}
         <g transform="translate(80, 82)">
