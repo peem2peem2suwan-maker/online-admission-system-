@@ -1,61 +1,15 @@
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import OfficialEmblem from "./OfficialEmblem";
 import { toThaiNumerals } from "../utils/validation";
-import { Printer, Download, X, Loader2, Info } from "lucide-react";
-import html2pdf from "html2pdf.js";
+import { Printer, X, Info, Download, FileText } from "lucide-react";
 
 export default function OfficialApplicationForm({ applicant, onClose }) {
   const printRef = useRef(null);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   if (!applicant) return null;
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleDownloadPDF = async () => {
-    if (isGeneratingPDF) return;
-    setIsGeneratingPDF(true);
-
-    try {
-      const element = printRef.current;
-      if (!element) {
-        setIsGeneratingPDF(false);
-        return;
-      }
-
-      const fileName = `ใบสมัคร_${applicant.fullName || (applicant.firstName + "_" + applicant.lastName)}_${applicant.code || "โควตา"}.pdf`;
-
-      const opt = {
-        margin: [8, 12, 8, 12],
-        filename: fileName,
-        image: { type: "jpeg", quality: 0.96 },
-        html2canvas: {
-          scale: 1.8,
-          useCORS: true,
-          allowTaint: true,
-          logging: false,
-          letterRendering: true,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      };
-
-      // Set timeout race so browser NEVER hangs
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout generating PDF")), 6000)
-      );
-
-      const generatePromise = html2pdf().set(opt).from(element).save();
-
-      await Promise.race([generatePromise, timeoutPromise]);
-    } catch (error) {
-      console.warn("Direct PDF export encountered an issue, launching print dialog fallback:", error);
-      // Fallback seamlessly to native browser print dialog (Save as PDF)
-      window.print();
-    } finally {
-      setIsGeneratingPDF(false);
-    }
   };
 
   // Level checkboxes check logic
@@ -80,60 +34,41 @@ export default function OfficialApplicationForm({ applicant, onClose }) {
   const applyYearThai = toThaiNumerals(applyDate.getFullYear() + 543);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:fixed-none">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:fixed-none">
       {/* Container */}
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[96vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         
         {/* Modal Toolbar (hidden when printing) */}
-        <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800">
+        <div className="no-print bg-slate-900 text-white px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+            <div className="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400 shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
             <div>
-              <h3 className="font-semibold text-sm sm:text-base">
-                ตัวอย่างรายงานใบสมัคร (แบบฟอร์มทางการ)
+              <h3 className="font-semibold text-sm sm:text-base leading-tight">
+                แบบฟอร์มใบสมัครทางการ (A4)
               </h3>
               <p className="text-xs text-slate-400">
-                รหัสใบสมัคร: <span className="font-mono text-amber-300 font-bold">{applicant.code || "QUOTA-68"}</span> • {studentFullName}
+                รหัส: <span className="font-mono text-amber-300 font-bold">{applicant.code || "QUOTA-68"}</span> • {studentFullName}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Print Button (Native & Fast) */}
+
+          <div className="flex items-center gap-2">
+            {/* Instant Print / Save as PDF Button */}
             <button
               onClick={handlePrint}
-              disabled={isGeneratingPDF}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="สั่งพิมพ์หรือบันทึกเป็น PDF (รวดเร็ว คมชัด ไม่ค้าง)"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>สั่งพิมพ์ / บันทึก PDF</span>
+              <span>พิมพ์ / บันทึกเป็น PDF</span>
             </button>
 
-            {/* Direct Download PDF Button */}
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isGeneratingPDF}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="ดาวน์โหลดไฟล์ PDF โดยตรง"
-            >
-              {isGeneratingPDF ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังโหลด PDF...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  <span>ดาวน์โหลด PDF</span>
-                </>
-              )}
-            </button>
-
+            {/* Close Button (Always responsive, never blocked) */}
             <button
               onClick={onClose}
-              disabled={isGeneratingPDF}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-              title="ปิดหน้าต่าง"
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+              title="ปิดหน้าต่าง (Esc)"
             >
               <X className="w-5 h-5" />
             </button>
@@ -141,11 +76,19 @@ export default function OfficialApplicationForm({ applicant, onClose }) {
         </div>
 
         {/* Tip Banner */}
-        <div className="no-print bg-blue-50 border-b border-blue-200 px-6 py-2 text-xs text-blue-900 flex items-center gap-2">
-          <Info className="w-4 h-4 text-blue-600 shrink-0" />
-          <span>
-            <strong>คำแนะนำ:</strong> สามารถกด <strong>"สั่งพิมพ์ / บันทึก PDF"</strong> แล้วเลือกปลายทางเป็น <em>"Save as PDF (บันทึกเป็น PDF)"</em> เพื่อรับไฟล์ความละเอียดสูงทันทีโดยไม่กระตุก
-          </span>
+        <div className="no-print bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-xs text-amber-950 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>
+              <strong>วิธีบันทึกเป็นไฟล์ PDF:</strong> กดปุ่มสีน้ำเงิน <strong>"พิมพ์ / บันทึกเป็น PDF"</strong> แล้วตรงช่อง <em>"เครื่องพิมพ์ (Destination)"</em> ให้เลือกเป็น <strong>"บันทึกเป็น PDF (Save as PDF)"</strong> จะได้ไฟล์ความละเอียดสูงทันที ไหลลื่น ไม่ค้าง
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-xs font-semibold text-amber-800 hover:text-amber-950 underline shrink-0 cursor-pointer ml-2"
+          >
+            ปิดหน้าต่าง
+          </button>
         </div>
 
         {/* Printable Paper Document (A4 Ratio) */}
@@ -156,7 +99,7 @@ export default function OfficialApplicationForm({ applicant, onClose }) {
           >
             {/* Header Layout */}
             <div className="relative mb-6 pb-2 min-h-[120px]">
-              {/* Top Left Logo (สอศ.) */}
+              {/* Top Left Logo (Official Tha Luang College Emblem) */}
               <div className="absolute top-0 left-0">
                 <OfficialEmblem className="w-24 h-24" />
               </div>

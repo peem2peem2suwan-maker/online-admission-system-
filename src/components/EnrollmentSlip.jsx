@@ -1,12 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import OfficialEmblem from "./OfficialEmblem";
 import { toThaiNumerals, formatIDCard } from "../utils/validation";
-import { Printer, Download, X, Award, CheckCircle2, Loader2, Info } from "lucide-react";
-import html2pdf from "html2pdf.js";
+import { Printer, X, Award, Info, FileText } from "lucide-react";
 
 export default function EnrollmentSlip({ applicant, onClose }) {
   const printRef = useRef(null);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   if (!applicant) return null;
 
@@ -14,96 +12,39 @@ export default function EnrollmentSlip({ applicant, onClose }) {
     window.print();
   };
 
-  const handleDownloadPDF = async () => {
-    if (isGeneratingPDF) return;
-    setIsGeneratingPDF(true);
-
-    try {
-      const element = printRef.current;
-      if (!element) {
-        setIsGeneratingPDF(false);
-        return;
-      }
-
-      const fileName = `ใบมอบตัว_${applicant.studentId || applicant.code}_${applicant.firstName}.pdf`;
-
-      const opt = {
-        margin: [10, 15, 10, 15],
-        filename: fileName,
-        image: { type: "jpeg", quality: 0.96 },
-        html2canvas: {
-          scale: 1.8,
-          useCORS: true,
-          allowTaint: true,
-          logging: false,
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      };
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout generating PDF")), 6000)
-      );
-
-      const generatePromise = html2pdf().set(opt).from(element).save();
-
-      await Promise.race([generatePromise, timeoutPromise]);
-    } catch (error) {
-      console.warn("Direct PDF export encountered an issue, launching print dialog fallback:", error);
-      window.print();
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
-
   const studentFullName = applicant.fullName || `${applicant.title || ""} ${applicant.firstName || ""} ${applicant.lastName || ""}`.trim();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:fixed-none">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:fixed-none">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[96vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         
         {/* Toolbar */}
-        <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-amber-400 shrink-0" />
+        <div className="no-print bg-slate-900 text-white px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shrink-0">
+              <Award className="w-5 h-5" />
+            </div>
             <div>
-              <h3 className="font-semibold text-sm sm:text-base">
-                หลักฐานยืนยันสิทธิ์และใบมอบตัวเป็นนักเรียน/นักศึกษา
+              <h3 className="font-semibold text-sm sm:text-base leading-tight">
+                หลักฐานยืนยันสิทธิ์และใบมอบตัวเป็นนักศึกษา
               </h3>
               <p className="text-xs text-slate-400">
-                รหัสนักศึกษา: <span className="text-amber-300 font-mono font-bold">{applicant.studentId || "รอออกรหัส"}</span>
+                รหัสนักศึกษา: <span className="text-amber-300 font-mono font-bold">{applicant.studentId || "รอออกรหัส"}</span> • {studentFullName}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              disabled={isGeneratingPDF}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-all shadow-xs active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-bold rounded-xl cursor-pointer transition-all shadow-md active:scale-95"
             >
               <Printer className="w-4 h-4" />
-              <span>สั่งพิมพ์ / บันทึก PDF</span>
-            </button>
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isGeneratingPDF}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-all shadow-xs active:scale-95"
-            >
-              {isGeneratingPDF ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังโหลด PDF...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  <span>PDF</span>
-                </>
-              )}
+              <span>พิมพ์ / บันทึกเป็น PDF</span>
             </button>
             <button
               onClick={onClose}
-              disabled={isGeneratingPDF}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer"
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl cursor-pointer transition-colors"
+              title="ปิดหน้าต่าง (Esc)"
             >
               <X className="w-5 h-5" />
             </button>
@@ -111,11 +52,19 @@ export default function EnrollmentSlip({ applicant, onClose }) {
         </div>
 
         {/* Tip Banner */}
-        <div className="no-print bg-blue-50 border-b border-blue-200 px-6 py-2 text-xs text-blue-900 flex items-center gap-2">
-          <Info className="w-4 h-4 text-blue-600 shrink-0" />
-          <span>
-            <strong>คำแนะนำ:</strong> สามารถกด <strong>"สั่งพิมพ์ / บันทึก PDF"</strong> แล้วเลือกเครื่องพิมพ์เป็น <em>"Save as PDF (บันทึกเป็น PDF)"</em> เพื่อได้เอกสารคมชัดสูงและไม่ค้าง
-          </span>
+        <div className="no-print bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-xs text-amber-950 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>
+              <strong>วิธีบันทึกเป็นไฟล์ PDF:</strong> กดปุ่มสีเขียว <strong>"พิมพ์ / บันทึกเป็น PDF"</strong> แล้วตรงช่อง <em>"เครื่องพิมพ์"</em> ให้เลือกเป็น <strong>"บันทึกเป็น PDF (Save as PDF)"</strong> จะได้ไฟล์คมชัดทันที
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-xs font-semibold text-amber-800 hover:text-amber-950 underline shrink-0 cursor-pointer ml-2"
+          >
+            ปิดหน้าต่าง
+          </button>
         </div>
 
         {/* Paper */}
