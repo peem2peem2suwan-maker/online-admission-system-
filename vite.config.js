@@ -8,5 +8,17 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    {
+      name: 'dev-mode-support',
+      transformIndexHtml(html, ctx) {
+        if (ctx?.server) {
+          // In development mode (npm run dev), replace bundle script with live /src/main.jsx
+          return html
+            .replace(/<script type="module" crossorigin src="\.\/assets\/.*?"><\/script>/, '<script type="module" src="/src/main.jsx"></script>')
+            .replace(/<link rel="stylesheet" crossorigin href="\.\/assets\/.*?">/, '');
+        }
+        return html;
+      },
+    },
   ],
 })
